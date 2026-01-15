@@ -1,0 +1,186 @@
+---
+title: "Week 1 Exercise"
+author: "Judah Altman"
+format: html
+editor: visual
+---
+
+### Week 1 Exercise
+
+#### Exercise 1.1
+
+```{r}
+typeof(mtcars) #returns type of the vector
+class(mtcars) #returns the data structure, or class of the data
+nrow(mtcars) #returns the number of rows in the data set
+ncol(mtcars) #returns the number of columns in the data set
+length(mtcars) #returns the size or length of the object (for a data frame, this is columns, but for a vector, it would be the number of items)
+dim(mtcars) #returns the rows by the columns - the dimensions
+rownames(mtcars) #returns the names of the rows
+colnames(mtcars) #returns the names of the columns
+```
+
+#### Exercise 1.2
+
+```{r}
+T <- 123
+TRUE <- 123
+#assigns 123 to T, but fails to assign 123 to TRUE because TRUE is a built in logical value
+```
+
+#### Exercise 1.3
+
+```{r}
+lgl <- c(TRUE, FALSE, NA)
+int <- c(1L, 6L, NA, 10L)
+dbl <- c(1, NA, 2.5, 4.5)
+chr <- c(NA, "these are", "some strings")
+
+#logical → integer → double → character
+str(c(TRUE, "chr"))
+
+#predictions
+c(1, FALSE) #double
+c("a", 1) #character
+c(TRUE, 1L) #integer
+```
+
+#### Exercise 1.4
+
+```{r}
+as.integer(c(FALSE, TRUE)) #0 and 1
+```
+
+#### Exercise 1.5
+
+```{r}
+x <- sample(c(TRUE, FALSE), size = 75, replace = TRUE)
+str(x)
+sum(x)
+mean(x)
+mean(x) == sum(x) / length(x)
+```
+
+#### Intermediary Notes
+
+```{r}
+## the proportion of cars in the dataset with more than 3 carburators, use of logical operators
+mean(mtcars$carb > 3)
+
+#sequences
+seq(from = 2, to = 26, by = 2)
+1:10
+seq(1, 10, by = 1)
+
+#subsetting
+mtcars$mpg
+x <- list(chr, lgl, letters) #combination of previous vectors
+str(x)
+names(x) <- c("chr", "lgl", "alphabet")
+str(x)
+x$alphabet
+mtcars[["mpg"]] #another way, pull out a list, need ""
+```
+
+#### Exercise 1.6
+
+```{r}
+mtcars["mpg"] #selects the column
+mtcars[["mpg"]] #pulls out the column
+
+identical(mtcars["mpg"], mtcars$mpg)
+identical(mtcars[["mpg"]], mtcars$mpg) #true
+```
+
+#### Exercise 1.7
+
+```{r}
+letters
+letters[17]
+seq <- 2:26
+letters[seq]
+letters[8:12]
+letters[[8:12]] #only allows selection of one element with double brackets
+letters[[17]] #works
+```
+
+#### Exercise 1.8
+
+```{r}
+dbl
+dbl[1] <- 10 #adds 10 in the 1st place
+dbl
+dbl[is.na(dbl)] <- 0 #assigns/replaces 0 with NA, this is 
+dbl
+letters[18] <- NA
+letters
+```
+
+#### Exerise 1.9
+
+```{r}
+mtcars[1:2] #selects columns
+mtcars[1:3, ] #selects first 3 rows and all columns
+mtcars[1:5, "cyl"] #selects first 5 rows and "cyl" column
+
+mtcars$wt > 4 #true or false
+mtcars[mtcars$wt > 4 , ] #subsets those values where the rows are greater than 4
+
+mtcars[mtcars$cyl == 4, ]
+mtcars[mtcars$mpg > 23, ]
+```
+
+#### Intermediary Notes
+
+```{r}
+mtcars[mtcars$carb %in% c(3, 6, 8), ]
+mtcars[mtcars$carb == 3 | mtcars$carb == 6 | mtcars$carb == 8, ] #same as above
+
+#search
+search() #shows packages
+.secret_var <- 1:10 #hides this variable from the environment, because starts with '.'
+.secret_var
+
+find("mtcars")
+mtcars <- "this is not the mtcars dataset"
+mtcars #now prints the above mtcars instead of the whole dataset (both are there, but new one overwrites the old one)
+find("mtcars")
+str(datasets::mtcars) #specifies the data set is the mtcars that is desired
+dplyr::glimpse(datasets::mtcars) #first grabs the function from the package
+
+#install.packages("palmerpenguins")
+library(tidyverse)
+library(palmerpenguins)
+table(penguins$year)
+```
+
+#### Exercise 1.10
+
+```{r}
+table(year)
+search() 
+#you get two errors because first it searches for the first or iteration of year that it finds, and then for the type of 'year' it finds, it can't apply 'table' to it
+#it finds year in tidyverse (lubridate)
+```
+
+
+#### Exercise 1.11
+
+```{r}
+by_2 <- seq(0, nrow(penguins), by = 2)
+penguins |> 
+  slice(by_2)
+
+by_3 <- seq(0, nrow(penguins), by = 3)
+penguins |> 
+  slice(by_3)
+```
+
+#### Exercise 1.12
+
+```{r}
+penguins |> 
+  filter(species == "Gentoo",
+         island == "Biscoe",
+         body_mass_g > 5000 & body_mass_g < 5500)
+```
