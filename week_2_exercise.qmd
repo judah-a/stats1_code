@@ -1,0 +1,186 @@
+---
+title: "Week 2 Exercises - Data Wrangling"
+author: "Judah Altman"
+format: html
+editor: visual
+---
+
+### 2.2_Data_Wrangling
+
+```{r}
+library(nycflights13)
+library(tidyverse)
+
+glimpse(flights)
+flights <- flights
+colnames(flights)
+```
+
+#### 3.2.5
+
+```{r}
+#1
+flights |> 
+  filter(arr_delay >= 120)
+flights |> 
+  filter(dest == "IAH" | dest == "HOU") 
+flights |> 
+  filter(carrier %in% c("UA", "AA", "DL")) 
+flights |> 
+  filter(month %in% c(7, 8, 9)) 
+flights |> 
+  filter(dep_delay <= 0) 
+flights |> 
+  filter(dep_delay >= 60 & dep_delay - arr_delay >= 30)
+  
+#2
+flights |> 
+  arrange(desc(dep_delay))
+flights |> 
+  arrange(sched_dep_time)
+
+#3
+flights |> 
+  arrange(air_time)
+flights |> 
+  arrange(distance / air_time)
+
+#4
+flights |> 
+  filter(year == 2013) |> 
+  distinct(month, day, .keep_all = TRUE) #yes, because there is 365 distinct rows
+
+#5
+flights |> 
+  arrange(desc(distance))
+flights |> 
+  arrange(distance)
+
+#6
+#It doesn't matter in terms of the final results, but using filter first makes arrange easier as arrange only will have to work on the remaining rows because filter subsets a group of rows, while using arrange first means that both arrange and filter have to work on the entire dataset as arrange doesn't subset rows it only puts them in an order based on the condition
+```
+
+#### 3.3.5
+
+```{r}
+#1
+flights |> 
+  select(dep_time, sched_dep_time, dep_delay)
+#dep_delay = dep_time - sched_dep_time
+
+#2
+flights |> 
+  select(dep_time, dep_delay, arr_time, arr_delay)
+flights |> 
+  select(starts_with("dep") | starts_with("arr"))
+flights |> 
+  select(ends_with("time") | ends_with("delay")) |> 
+  select(-starts_with("sched") & -starts_with("air"))
+flights |> 
+  select(4, 6, 7, 9)
+flights |> 
+  select(contains("dep_") | contains("arr_")) |> 
+  select(-contains("sched"))
+
+#3
+flights |> 
+  select(carrier, carrier, flight) #it just grabs the column once? 
+
+#4
+variables <- c("year", "month", "day", "dep_delay", "arr_delay")
+flights |> 
+  select(any_of(variables)) 
+#any_of returns any_of the names in the vector, so here with select, if all of those columns exist, it returns them, if there is a column that doesn't exist, because it's any_of (not all_of) it just returns the values that it finds
+
+#5
+flights |> 
+  select(contains("TIME"))
+#automatically ignores the case of the character
+
+#6
+flights |> 
+  rename(air_time_min = air_time) |> 
+  relocate(air_time_min, 1)
+
+#7
+# flights |> 
+#   select(tailnum) |> 
+#   arrange(arr_delay)
+#it doesn't work because select returns only the column selected, and arrange then can only work on what it is given from above, which is just the column tailnum, so arr_delay doesn't exist in the dataset that arrange() is given after already selecting tailnum, therefore, it can't find it
+```
+
+#### 3.5.7
+
+```{r}
+#1
+flights |> 
+  group_by(carrier) |> 
+  summarise(avg_delay = mean(arr_delay, na.rm = TRUE)) |> 
+  arrange(desc(avg_delay))
+flights |> 
+  group_by(dest, carrier) |> 
+  summarize(car_sum_delay = sum(arr_delay, na.rm = TRUE), n = n()) |> 
+  mutate(avg_delay_dest_car = car_sum_delay / n) |> 
+  arrange(desc(avg_delay_dest_car)) |> 
+  filter(n > 10)
+#it is difficult because certain airports and carriers only have one flight in the database that went there, so it takes whatever value that is, therefore it's unclear if it's the interaction of destination and carrier, or one or the other, but you can assume only large n and see if the same airports or carriers tend to be more prominent, it is also difficult because we would have to assume that dpearture airport is not relevant here, nor are any other factors
+
+#2
+flights |> 
+  group_by(dest) |> 
+  slice_max(dep_delay, na_rm = TRUE)
+
+#3
+flights |> 
+  group_by(dep_time) |> 
+  summarize(avg_delay = mean(dep_delay)) |> 
+  ggplot(aes(x = dep_time, y = avg_delay)) +
+  geom_line()
+
+#4
+flights |> 
+  slice_head(n = -1) |>  #returns everything
+  slice_min(dep_delay, n = -2) #returns everything
+
+#5
+flights |> 
+  count(month)
+#count() first groups_by() the specified variable, and then summarizes the number of that variable or summarize(n())
+flights |> 
+  count(month, sort = TRUE)
+#sort arranges the counted values from highest to lowest, like arrange(desc())
+
+#6
+df <- tibble(
+  x = 1:5,
+  y = c("a", "b", "a", "a", "b"),
+  z = c("K", "K", "L", "L", "K")
+)
+#a
+df |> 
+  group_by(y) #will group the y column into a's and b's, but order will stay the same, i.e. nothing happens to the dataframe, but the output will tell you that the data is grouped into two values
+#b
+df |> 
+  arrange(y) #will arrange the data so that the rows with 'a' are first, and the rows with 'b' are second, it's different from a) because it actually rearranges the data in the output
+#c
+df |>
+  group_by(y) |>
+  summarize(mean_x = mean(x)) #this pipeline first groups the data into a's and b's, and then gives the mean value of the x column for all the a's and for all the b's, so the final output will be a 2x2 tibble
+#d
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x)) #this pipeline groups the data into y, then takes the grouped y's and groups them by Z, and then calculates the mean values of each of those groups for their x cells. The final output will be a 3x3 tibble because there is two values of z for a but only 1 value of z for b, and then there are three columns, y, z, and mean. The message means that summarize use the 'y' grouping to calculate the mean
+#e
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x), .groups = "drop") #this is different because it drops the groups, so there isn't an error message, even though the result is the same as it finds all different groupings of y combined with z
+#f
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x)) #see above for pipeline description
+df |>
+  group_by(y, z) |>
+  mutate(mean_x = mean(x)) #this is different because it keeps all rows and columns, and instead just creates a new column that is "based on the grouping that this row would be apart of, here is the value that this row should have in the new column", so with summarize, rows 3 and 4 or 2 and 5 are the same and would be combined, here each row is kept distinct with an added value
+```
+
+
