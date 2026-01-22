@@ -1,18 +1,146 @@
 ---
-title: "Class Notes"
+title: "Class Notes Week 2"
 format: html
 editor: visual
 ---
 
 ```{r}
-
+library(here)
+library(tidyverse)
+library(gssr)
+library(gssrdoc)
+library(broom)
 ```
 
-You can add options to executable code like this
+Get data and save it to hard drive
+
+https://gss.norc.org
 
 ```{r}
-#| echo: false
-2 * 2
+#| eval: false
+
+gss2024 <- gss_get_yr(2024)
+
+saveRDS(gss2024, file = here("data", "gss2024.rds"))
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Loading saved data.
+
+```{r}
+gss2024 <- readRDS(here("data", "gss2024.rds"))
+glimpse(gss2024) #gives rows, columns, and column names + data type + first few rows
+
+df <- gss2024 |> 
+  select(polviews, sex) |> 
+  drop_na() |> 
+  haven::zap_labels() #removes the value/cell labels (not variable/column labels), useful for information purposes, but can confuse R
+```
+
+Model C (compact model), getting R to "estimate" model C (0 parameter guess)
+
+```{r}
+df$mod_c_pred <- 4 #alternative way, for adding one quick column
+df <- df |> 
+  mutate(mod_c_pred = 4,
+         mod_c_err = polviews - mod_c_pred)
+
+sse_c <- sum(df$mod_c_err^2) #sum of squared errors for model C
+```
+
+Model A (augmented model)
+
+```{r}
+df <- df |> 
+  mutate(mod_a_pred = mean(polviews),
+         mod_a_err = polviews - mod_a_pred)
+
+sse_a <- sum(df$mod_a_err^2)
+```
+
+Estimate proportional reduction in error (PRE)
+
+```{r}
+pre <- (sse_c - sse_a) / sse_c
+```
+
+Getting model c with lm(). Make a version of polviews "centered" on 4
+
+```{r}
+df <- df |> 
+  mutate(polviews_dev = polviews - 4) #transforming 4 into 0, trick to get lm to work
+
+mod_c <- lm(polviews_dev ~ 0, data = df) #0 is saying don't use an intercept
+summary(mod_c)
+deviance(mod_c) #gives SSE
+```
+
+Same for model a.
+
+```{r}
+mod_a <- lm(polviews_dev ~ 1, data = df) #1 is saying use one parameter, assume there is one intercept which 1 is multiplied by, so it estimates based on the mean (can only be 0 or 1)
+summary(mod_a)
+deviance(mod_a)
+
+pre <- (deviance(mod_c) - deviance(mod_a)) / deviance(mod_c)
+```
+
+How to add a prediction to the dataframe
+
+```{r}
+df$mod_a_pred <- predict(mod_a) #predictions from the result of a model
+df$mod_c_pred <- predict(mod_c)
+```
+
+Sigma is the RMSE.
+
+```{r}
+glance(mod_a)
+```
+
+New dataset, based on political views by sex.
+
+```{r}
+df2 <- df |> 
+  group_by(sex) |> #creates two distributions, shifted on the x axis (slightly different means, same variance)
+  summarize(mean_pv = mean(polviews))
+```
+
+Make a new variable with a meaningful 0.
+
+```{r}
+df <- df |> 
+  mutate(male = ifelse(sex == 1, 1, 0))
+
+model3 <- lm(polviews ~ 1 + male, data = df)
+tidy(model3) #similar to summary()
+class(model3) #lm
+```
+
+Another way is to use the factor wrapper
+
+```{r}
+model3 <- lm(polviews ~ 1 + factor(sex), data = df) #lowest value becomes the reference
+tidy(model3)
+```
+
+A good way especially for plotting is to have a `chr` (character) version.
+
+```{r}
+df <- df |> 
+  mutate(sex_chr = if_else(sex == 1, "Male", "Female"))
+
+model3 <- lm(polviews ~ 1 + sex_chr, data = df)
+tidy(model3)
+```
+
+Compare 1 parameter and 2 parameter model
+
+```{r}
+deviance(mod_a) #just b0
+deviance(model3) #2 parameter model, b0 and b1, slight reduction in deviance
+
+(deviance(mod_a) - deviance(model3)) / deviance(mod_a) #pre
+glance(model3) #r.squared is the PRE
+``` 
+
+
