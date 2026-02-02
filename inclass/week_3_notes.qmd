@@ -1,0 +1,183 @@
+---
+title: "Week 3 Notes"
+author: "Judah Altman"
+format: html
+editor: visual
+---
+
+#### Setup
+
+```{r}
+library(gssr)
+library(gssrdoc)
+library(tidyverse)
+library(broom)
+library(here)
+theme_set(theme_minimal())
+```
+
+Load data
+
+```{r}
+gss2024 <- readRDS(here("data", "gss2024.rds")) |> 
+  haven::zap_labels()
+```
+
+Get skewed data (this is right skewed because the tail points to the right)
+
+```{r}
+df <- gss2024 |> 
+  select(tvhours) |> 
+  drop_na()
+
+ggplot(df,
+       aes(x = tvhours)) +
+  #geom_histogram(bins = 25, binwidth = 1, color = "white", fill = "black") #starts at 0, sets the size of the bins/cuts, color is the outline, fill is the color of the bars
+  geom_bar() #bar instead of histogram because they are integer values
+```
+
+#### Sampling and visualizing
+
+Consider this sample a population and take repeated samples from it.
+First step is to write a function that grabs a sample and computes the mean.
+
+```{r}
+#this example only works on this df, to make general would need to add a df argument, also what to deal with missing values, etc.
+get_sample_mean <- function(n) { 
+  df |> 
+    slice_sample(n = n, replace = TRUE) |> 
+    summarise(m = mean(tvhours)) |> 
+    as.numeric()
+}
+```
+
+Then make a simulation "skeleton" that I can plug results into
+
+```{r}
+sims <- tibble(
+  sim_number = 1:1000
+)
+```
+
+Now I add the sampled means to the skeleton.
+
+```{r}
+sims <- sims |> 
+  rowwise() |> #does the function separately by row, instead of vectorized (for the vector), saying group_by(row)
+  mutate(m = get_sample_mean(n = 1)) #change n to get different distributions
+```
+
+plotting the results
+
+```{r}
+ggplot(sims, aes(x = m)) +
+  geom_histogram(bins = 25, binwidth = 1, #change these as needed/desire for visualizing the results
+                 fill = "gray", color = "white",
+                 aes(y = after_stat(density))) +
+  geom_density(color = "red")
+```
+
+#### PRE and the F-Test
+
+Null hypothesis and null distribution: pre-data guess (often about group differences), then evaluate that guess relative to what we see in the data/sample
+
+Null hypothesis: the average American adult in 2024 watches 3 hours of "TV" per day
+
+```{r}
+df <- df |> 
+  mutate(tv_dev = tvhours - 3) #distributed around 0
+
+m0 <- lm(tv_dev ~ 0, data = df)
+m1 <- lm(tv_dev ~ 1, data = df)
+
+observed_pre <- (deviance(m0) - deviance(m1)) / deviance(m0) #SSE_C - SSE_A / SSE_C
+pre
+```
+
+Construct a null distribution - and assume that it is true
+
+```{r}
+#functions that allow you to take a sample from an infinite sample
+#binom distribution (sampling from 0 or 1)
+rbinom(10, 1, 0.5) #10 samples, number of trials, 50% probability
+#normal distribution
+rnorm(10, mean = 3, sd = 3.3) 
+
+fake_data <- tibble(tvhours = rnorm(2152, mean = 3, sd = 3.3))
+
+fake_data <- fake_data |> 
+  mutate(tv_dev = tvhours - 3)
+
+m0 <- lm(tv_dev ~ 0, data = fake_data)
+m1 <- lm(tv_dev ~ 1, data = fake_data)
+
+pre <- (deviance(m0) - deviance(m1)) / deviance(m0) #SSE_C - SSE_A / SSE_C
+pre
+```
+
+PRE - amount that model a improves on model c even though model c is accurate, want our new model to improve more than another model would by accident
+
+can then check how often the null distribution does not have a significant improvement through many simulations? 
+Make a function
+
+```{r}
+calc_null_pre <- function() {
+  null_data <- tibble(tvdev = rnorm(2152, mean = 0, sd = 3.3))
+  m0 <- lm(tvdev ~ 0, data = null_data)
+  m1 <- lm(tvdev ~ 1, data = null_data)
+  pre <- (deviance(m0) - deviance(m1)) / deviance(m0)
+  return(pre)
+}
+```
+
+Create a skeleton and append the null PRE simulations, 1000 PRE simulations
+
+```{r}
+null_sims <- tibble(sim_number = 1:1000) |> 
+  rowwise() |> 
+  mutate(pre = calc_null_pre())
+```
+
+Show how the observed pre compares to the distribution of Null PREs - observed is quite different than the estimations, in other words, out of all the worlds we estimated, the real world (observed), is very different/unique than all the other worlds
+
+```{r}
+ggplot(null_sims,
+       aes(x = pre)) +
+  geom_histogram() +
+  geom_vline(xintercept = observed_pre, #compares this simulation to the observed PRE
+             linetype = "dashed",
+             color = "red")
+
+quantile(null_sims$pre, c(0.95, 0.99, 1)) #above the all results, 95% percentile result, 99% percentile result, and highest result
+```
+
+Based on the formula in the book, what F would that be equivalent to?
+
+How much better did we do because of adding one parameter (numerator), over left over PRE divided by how many parameters are left (denominator)
+
+```{r}
+fstat <- (observed_pre / 1) / ((1 - observed_pre) / (nrow(df) - 1))
+
+```
+
+F-distribution with one numerator df and 2141 denom df
+
+```{r}
+#cf. notes
+```
+
+Can get F distributions
+
+```{r}
+?qf
+qf(.99, 1, 2151)
+```
+
+You can get the P-value
+
+```{r}
+1 - pf(fstat, 1, 2151) #probability of getting this fstatistic (1 - probability = pvalue)
+```
+
+
+

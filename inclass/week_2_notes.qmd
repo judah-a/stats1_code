@@ -141,6 +141,4 @@ deviance(model3) #2 parameter model, b0 and b1, slight reduction in deviance
 
 (deviance(mod_a) - deviance(model3)) / deviance(mod_a) #pre
 glance(model3) #r.squared is the PRE
-``` 
-
-
+```
