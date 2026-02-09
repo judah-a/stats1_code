@@ -1,0 +1,66 @@
+---
+title: "Week 4 Notes"
+format: html
+editor: visual
+---
+
+Converting PRE scores to F\*
+
+```{r}
+#where df1 = pa - pc, and df2 = n - pa
+qpre <- function(p, df1, df2) {
+  f <- qf(p = p, df1 = df1, df2 = df2)
+  qpre <- f / (f + (df2 / df1))
+  return(qpre)
+}
+
+qf(0.95, 1, 99)
+qpre(0.95, 1, 99)
+```
+
+Load packages
+
+```{r}
+library(gssr)
+library(gssrdoc)
+library(tidyverse)
+library(broom)
+library(here)
+theme_set(theme_light())
+```
+
+Load data
+
+```{r}
+#| eval: FALSE
+
+data("gss_panel10_long")
+saveRDS(gss_panel10_long, file = here("data", "gss_panel10_long.rds"))
+```
+
+load saved gss data
+
+```{r}
+gss_panel10_long <- readRDS(here("data", "gss_panel10_long.rds"))
+```
+
+Create data
+
+```{r}
+#cf code
+```
+
+Power test
+
+```{r}
+groups <- 2
+within_var <- var(df$y1) #estimate from data (or from a previous study)
+between_var <- var(c(0, 1)) * ((groups - 1 / groups)) #population variance (between groups, where one group has a mean of 0, and the other has a mean of 1, or some value before and after)
+
+#get the smallest sample size that will give a meaningful difference
+power.anova.test(groups = groups,
+                 between.var = between.var,
+                 within.var = within.var,
+                 sig.level = .01,
+                 power = .8)
+```

@@ -170,7 +170,8 @@ Can get F distributions
 
 ```{r}
 ?qf
-qf(.99, 1, 2151)
+qf(.99, 1, 2151) #probability, parameters added, degrees of freedom
+qf(0.95, 1, 30)
 ```
 
 You can get the P-value
