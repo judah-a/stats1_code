@@ -1,0 +1,101 @@
+---
+title: "Week 5 Notes"
+author: "Judah Altman"
+format: html
+editor: visual
+---
+
+#### Chapter 6
+
+```{r}
+library(tidyverse)
+library(broom)
+library(stringr)
+library(modelsummary)
+library(tinyplot)
+```
+
+Load data
+
+```{r}
+states <- as_tibble(state.x77, rownames = "state") |> 
+  bind_cols(region = state.division) |> 
+  janitor::clean_names() |> 
+  mutate(south = as.integer(str_detect(as.character(region), "South")))
+```
+
+Model Comparison
+
+```{r}
+mc <- lm(life_exp ~ 1, data = states)
+ma <- lm(life_exp ~ 1 + hs_grad, data = states)
+ma2 <- lm(life_exp ~ hs_grad, data = states) #same as above
+
+msummary(list("MC" = mc,
+              "MA" = ma),
+         fmt = 2,
+         estimate = "{estimate} ({std.error})", #adds in std. error in brackets beside the estimate
+         shape = term ~ model + statistic,
+         gof_map = c("nobs", "F", "r.squared"))
+```
+
+t-statistic is -1.72 / 0.33 or -1.72 / SE, F-statistic is the t statistic squared, t statistic is asking if the mean is different
+
+MA est, the expected life expectancy if there were zero high school graduates (practically meaningless)
+
+Can also do it with a dummy variable, cf. .qmd file
+
+Centering - mean is now 0, before it is when x is literally 0, now its when the average is 0, slope won't change, but the mean will
+
+```{r}
+states <- states |> 
+  mutate(c_hs_grad = hs_grad - mean(hs_grad))
+```
+
+When you have a state with an average level of hs graduates, then their life expectancy is the mean - which is shown in the model
+
+```{r}
+fit_cent <- lm(life_exp ~ 1 + c_hs_grad, data = states)
+
+msummary(list("Centered" = fit_cent),
+         fmt = 3,
+         estimate = "{estimate} ({std.error})", #adds in std. error in brackets beside the estimate
+         shape = term ~ model + statistic,
+         #statistic = NULL,
+         gof_map = c("nobs", "r.squared", "F"))
+```
+
+Normalization - re-scale x so the minimum value is equal to 0 and the maximum value is equal to 1
+- intercept is the lowest, and the slope is the difference between the maximum difference that high school graduation can make to life expectancy, difference between max(y_hat) and min(y_hat)
+
+```{r}
+states <- states |> 
+  mutate(hs_grad01 = (hs_grad - min(hs_grad)) / (max(hs_grad) - min(hs_grad)), #subract min, divide by range
+         hs_grad01 = scales::rescale(hs_grad)) #easier way
+
+fit_pomp <- lm(life_exp ~ hs_grad01, data = states)
+
+(max(states$hs_grad) - min(states$hs_grad)) * 0.097 #this gives the value of the normalized slope
+```
+
+standardization of x or y to their z scores, which tells how many standard deviation units that value is from the mean, do this when one of the values is difficult to interpret
+
+now the slope when standardizing x is when the value of x goes up by 1 standard deviation unit, we expect y to increase by a certain amount
+
+if standardizing both, when y is at its average, x will be at its average, so mean will be 0, and for 1 increase of standard deviations of x, we expect y to go up by that many standard deviations
+
+XY standardized is the same as Pearsons R, or the correlation coefficient
+
+cf. regression table on the notes to see all of them compared
+
+#### Testing the Null
+
+Permutation test - shuffling the actual values in a simulation to get many null worlds and then seeing if the actual value is different - break the dependency
+(this will begin to approximate the standard deviation of the slope)
+
+Bootstrapping - not breaking the dependency, keeping the relationship between the columns, so pull out rows
+
+```{r}
+
+```
+

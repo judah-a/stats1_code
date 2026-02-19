@@ -1,0 +1,430 @@
+---
+title: "Chapter 6 homework"
+author: "Judah Altman"
+format:
+  html:
+    embed-resources: true
+---
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(here)
+library(gssrdoc)
+```
+
+## Data
+
+This homework uses a built-in dataset from base R (`state.x77`). Run the code below to create the working tibble `states`.
+
+```{r}
+state.x77_with_names <- as_tibble(state.x77,
+                                  rownames = "state")
+
+states <- bind_cols(state.x77_with_names,
+                    region = state.division) |>
+  janitor::clean_names() |>
+  mutate(
+    south = as.integer(
+      str_detect(as.character(region), "South")
+    )
+  )
+
+?state.x77
+```
+
+Throughout, use:
+
+-   outcome: `life_exp`
+-   predictor: `murder`
+
+# Question 1: Descriptive statistics
+
+## 1a. Descriptive statistics (psych)
+
+Use `psych::describe()` (or something else if you want) to get descriptive statistics for `life_exp` and `murder`.
+
+```{r}
+glimpse(states)
+
+psych::describe(states$life_exp)
+psych::describe(states$murder)
+```
+
+## 1b. Descriptive statistics (tidyverse)
+
+Compute (at minimum) the mean and standard deviation of `life_exp` and `murder` using `summarize()`.
+
+```{r}
+states |> 
+  summarize(life_mean = mean(life_exp), 
+            murder_mean = mean(murder),
+            life_sd = sd(life_exp),
+            murder_sd = sd(murder))
+```
+
+# Question 2a: Regression and model comparison
+
+You will evaluate whether `murder` predicts `life_exp`.
+
+## 2a(i). Write the model comparison and null hypothesis
+
+Write Model C and Model A in words and equations, and state the null hypothesis.
+
+A typical setup for testing whether a slope is needed is:
+
+-   Model C (constrained): slope fixed at 0
+-   Model A (augmented): slope estimated from the data
+
+Use the notation below (fill in the missing pieces in your write-up):
+
+Model C: The average of life expectancy is the best predictor of life expectancy. $$
+Y_i = b_0 + \varepsilon_i
+$$
+
+Model A: Murder improves our predictions of life expectancy. $$
+Y_i = b_0 + b_1X_i + \varepsilon_i
+$$
+
+Null hypothesis (in symbols and words): Murder does not affect life expectancy. $$
+H_0: b_1 = 0
+$$
+
+## 2a(ii). Fit both models
+
+```{r}
+mc <- lm(life_exp ~ 1, data = states)
+summary(mc)
+ma <- lm(life_exp ~ 1 + murder, data = states)
+summary(ma)
+```
+
+## 2a(iii). Compute SSE(C), SSE(A), PRE, and F
+
+Compute:
+
+-   $\mathrm{SSE}_C$ and $\mathrm{SSE}_A$ from the fitted models
+-   $\mathrm{PRE} = (\mathrm{SSE}_C - \mathrm{SSE}_A)/\mathrm{SSE}_C$
+-   the model-comparison $F$ statistic
+
+Use `deviance()` for SSE (RSS) and `df.residual()` as needed.
+
+$$
+F = \frac{(\mathrm{SSE}_C - \mathrm{SSE}_A)/(P_A - P_C)}{\mathrm{SSE}_A/(n - P_A)}.
+$$
+
+```{r}
+sse_c <- deviance(mc)
+sse_c
+sse_a <- deviance(ma)
+sse_a
+pre <- (sse_c - sse_a) / sse_c
+pre
+f_star <- (sse_c - sse_a) / (sse_a / df.residual(ma))
+f_star
+```
+
+## 2a(iv). Write the prediction equation and interpret coefficients
+
+Write the prediction equation implied by Model A:
+
+$$
+\widehat{\text{life_exp}} =  72.97 - 0.28(\text{murder})
+$$
+
+Interpret:
+
+-   the intercept: when the murder rate is 0 per 100,000 people, the average life expectancy in a state will be 72.97 years
+-   the slope: for every 1 per 100,00 people increase in murder rate in a state, that state's life expectancy will decrease by 0.28 years.
+
+## 2a(v). Conclusion
+
+State:
+
+-   statistical conclusion (report $F$ or $t$, PRE, and $p$)
+
+```{r}
+f_crit <- qf(0.99, 1, 48)
+f_crit < f_star
+t_star <- sqrt(f_star)
+t_star
+```
+
+We can reject the null hypothesis because the $F$ value is larger than its respective critical value when $\alpha = 0.01$
+
+-   substantive conclusion (in plain language)
+
+Murder rate has a meaningful (statistically significant) effect on life expectancy, therefore we can reject the null hypothesis that murder rate does not affect the average life expectancy of a state.
+
+# Question 2b: Center the predictor
+
+Create a centered version of murder:
+
+## 2b(i). Create `murder_c` and refit the model
+
+```{r}
+states <- states |> 
+  mutate(murder_c = murder - mean(murder))
+
+mc_c <- lm(life_exp ~ 1, data = states)
+summary(mc_c)
+ma_c <- lm(life_exp ~ 1 + murder_c, data = states)
+summary(ma_c)
+```
+
+## 2b(ii). Report SSE(A), SSE(C), PRE, and F again
+
+Compute the same fit statistics (SSE, PRE, F). Compare them to the results from Question 2a.
+
+```{r}
+sse_c_c <- deviance(mc_c)
+sse_c_c
+sse_c
+sse_a_c <- deviance(ma_c)
+sse_a_c
+sse_a
+pre_c <- (sse_c_c - sse_a_c) / sse_c_c
+pre_c
+pre
+f_star_c <- (sse_c_c - sse_a_c) / (sse_a_c / df.residual(ma_c))
+f_star_c
+f_star
+```
+
+They are all the same from 2a.
+
+## 2b(iii). Interpret coefficients after centering
+
+Write the prediction equation for the centered model and interpret the intercept and slope.
+
+$$
+\widehat{\text{life_exp}} =  70.88 - 0.28(\text{murder_c})
+$$
+
+In particular: what does the intercept represent *now*?
+
+-   the intercept: when a state has the average murder rate per 100,000 people, the average life expectancy in a state will be 70.88 years
+-   the slope: for every 1 per 100,00 people increase in murder rate in a state above the average murder rate of all states, that state's life expectancy will decrease by 0.28 years. Similarly, for every 1 per 100,00 people decrease in murder rate in a state below the average murder rate of all states, that state's life expectancy will increase by 0.28 years.
+
+## 2b(iv). Plot and compare
+
+Make two scatterplots with regression lines:
+
+1.  `life_exp` vs. `murder`
+2.  `life_exp` vs. `murder_c`
+
+```{r}
+ggplot(states, aes(x = murder, y = life_exp)) +
+  geom_point() +
+  geom_smooth(method = "lm", level = 0.99) +
+  ylim(c(min(states$life_exp - 1), max(states$life_exp) + 1)) +
+  labs(title = "Life expectancy and murder",
+       subtitle = "US states, 1977",
+       x = "Murder rate per 100,000 people",
+       y = "Life expectancy at birth") +
+  theme_minimal()
+
+ggplot(states, aes(x = murder_c, y = life_exp)) +
+  geom_point() +
+  geom_smooth(method = "lm", level = 0.99) +
+  ylim(c(min(states$life_exp - 1), max(states$life_exp) + 1)) +
+  labs(title = "Life expectancy and murder",
+       subtitle = "US states, 1977",
+       x = "Murder rate per 100,000 people (centered)",
+       y = "Life expectancy at birth") +
+  theme_minimal()
+```
+
+How are these plots different?
+
+They are different with respect to their x-axes. Plot 1's minimum X value is 0, while plot 2 is centered around the average murder rate, meaning that the average murder rate in the centered plot takes on a value of 0 so negative values mean that the murder rate is below the average. Therefore, their X-intercept when x = 0 differs, but their slope and data points are the same.
+
+# Question 2c: Change the units of the predictor
+
+Create a transformed predictor by standardizing `murder`.
+
+## 2c(i). Create `murder_std` and refit the model
+
+```{r}
+states <- states |> 
+  mutate(murder_std = (murder - mean(murder)) / sd(murder))
+
+mc_s <- lm(life_exp ~ 1, data = states)
+summary(mc_s)
+ma_s <- lm(life_exp ~ 1 + murder_std, data = states)
+summary(ma_s)
+```
+
+## 2c(ii). Report SSE(A), SSE(C), PRE, and F again
+
+Compute SSE, PRE, and F again and compare them to 2a and 2b.
+
+```{r}
+sse_c_s <- deviance(mc_s)
+sse_c_s
+sse_c_c
+sse_c
+sse_a_s <- deviance(ma_s)
+sse_a_s
+sse_a_c
+sse_a
+pre_s <- (sse_c_s - sse_a_s) / sse_c_s
+pre_s
+pre_c
+pre
+f_star_s <- (sse_c_s - sse_a_s) / (sse_a_s / df.residual(ma_s))
+f_star_s
+f_star_c
+f_star
+```
+
+## 2c(iii). Interpret coefficients after rescaling
+
+Write the prediction equation and interpret the slope carefully in the new units.
+
+$$
+\widehat{\text{life_exp}} =  70.88 - 1.05(\text{murder_std})
+$$
+
+-   the intercept: when a state has the average murder rate per 100,000 people, the average life expectancy in a state will be 70.88 years
+-   the slope: for every one standard deviation increase in murder rate in a state above the average murder rate of all states, that state's life expectancy will decrease by 1.05 years. Similarly, for every 1 standard deviation decrease in murder rate in a state below the average murder rate of all states, that state's life expectancy will increase by 1.05 years.
+
+# Question 3: Predicted values and what transformations do (and do not) change
+
+You now have three versions of the same basic relationship:
+
+1.  using `murder`
+2.  using `murder_c`
+3.  using `murder_std`
+
+## 3a. Predicted life expectancy at a specific murder rate
+
+Using each of your three fitted Model A versions, compute the predicted life expectancy for a state with `murder` = 8.
+
+Show your work. (Be explicit about how you convert 8 into the appropriate value for `murder_c` and `murder_std`.)
+
+```{r}
+x = 8
+y = 72.97 - 0.28*x
+y
+
+x_c = x - mean(states$murder)
+y_c = 70.88 - 0.28*x_c
+y_c
+
+x_s = (x - mean(states$murder)) / sd(states$murder)
+y_s = 70.88 - 1.05*x_s
+y_s
+
+predict(ma)[8]
+predict(ma_c)[8]
+predict(ma_s)[8]
+```
+
+## 3b. Summary paragraph
+
+Write a brief summary explaining what you learned about transforming a predictor:
+
+-   How do these transformations affect the estimated intercept and slope?
+
+Transforming the predictor to centered changes the intercept but not the slope, transforming the predictor to standardized changes the intercept and the slope, but the intercept is the same as the centered intercept
+
+-   Do they change predicted values (when transformed consistently)?
+
+No (here there is a slight change because the actual intercept and slope have many decimals and I round in the equations. However, when the predict function is used for 8, all the values are the same
+
+-   Do they change overall goodness of fit (SSE, PRE, $F$)?
+
+No, goodness of fit is the same every time for all the values.
+
+# Project application
+
+Do the same thing with an outcome and predictor of your choice from your own dataset. Use three transformations:
+
+-   original
+-   normalized X
+-   fully standardized
+
+Interpret the intercepts and slopes for each of the three models. Compare the fit statistics for each of the three models.
+
+\*My original data are not continuous variables so I switched to continuous variables.
+
+```{r}
+gss2024 <- readRDS(here("data", "gss2024.rds"))
+
+df <- gss2024 |> 
+  select(coninc, hrs1) |> 
+  drop_na() |> 
+  haven::zap_labels() 
+```
+
+Fitting the models (original, normalized X, fully standardized)
+
+```{r}
+df <- df |>
+  mutate(coninc_std = (coninc - mean(coninc)) / sd(coninc),
+         hrs1_std = (hrs1 - mean(hrs1)) / sd(hrs1),
+         hrs1_norm = scales::rescale(hrs1))
+
+mc <- lm(coninc ~ 1, data = df)
+summary(mc)
+mc_s <- lm(coninc_std ~ 1, data = df)
+summary(mc_s)
+ma <- lm(coninc ~ 1 + hrs1, data = df)
+summary(ma)
+ma_n <- lm(coninc ~ 1 + hrs1_norm, data = df)
+summary(ma_n)
+ma_s <- lm(coninc_std ~ 1 + hrs1_std, data = df)
+summary(ma_s)
+```
+
+Original Model:
+
+-   intercept: If an individual worked zero hours last week, their family income will be predicted to be \$34111.26
+
+-   slope: For every additional hour an individual worked last week, their family income will increase by 537.08 constant dollars
+
+Normalized X Model:
+
+-   intercept: 34111 dollars is the predicted family income of an individual when an individual's hours worked is at the minimum number of hours worked in the sample.
+
+-   slope: 47800 dollars is the amount that family income would be predicted to increase if the individuals worked the maximum possible number of hours in the sample.
+
+Fully Standardized Model:
+
+-   intercept: 0 because the means of x and y in simple regression will always converge, so the average family income in standard units will when the individual works the average number of hours in standard units.
+
+-   slope: For every additional standard hour worked by an individual last week, their family income will be predicted to increase by 0.18 standard unit dollars.
+
+Fit statistics
+
+```{r}
+sse_c <- deviance(mc)
+sse_c
+sse_c_s <- deviance(mc_s)
+sse_c_s
+
+sse_a <- deviance(ma)
+sse_a_n <- deviance(ma_n)
+sse_a_s <- deviance(ma_s)
+sse_a
+sse_a_n
+sse_a_s
+
+pre <- (sse_c - sse_a) / sse_c
+pre_n <- (sse_c - sse_a_n) / sse_c
+pre_s <- (sse_c_s - sse_a_s) / sse_c_s
+pre
+pre_n
+pre_s
+
+f_star <- (sse_c - sse_a) / (sse_a / df.residual(ma))
+f_star_n <- (sse_c - sse_a_n) / (sse_a_n / df.residual(ma_n))
+f_star_s <- (sse_c_s - sse_a_s) / (sse_a_s / df.residual(ma_s))
+f_star
+f_star_n
+f_star_s
+```
+
+All the same (except standardized SSE's which reduce error in standardized units)

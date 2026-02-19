@@ -191,10 +191,9 @@ Chipotle wants to know whether sales have rebounded after an E. coli scare. They
 1.  **MODEL C (compact):** uses the actual number of markets before E. coli to predict how many markets Chipotle has sales in now\
     $$Markets_i = 200 + \varepsilon_i$$
 
--   **MODEL A (augmented):** uses the presence of absence of E. coli to estimate how many more or less markets Chipotle has sales in, where $Markets_\text{total}$ is a count of markets with sales (one-parameter model)
-    $$Markets_i = Markets_\text{total} + \varepsilon_i$$
+-   **MODEL A (augmented):** uses the presence of absence of E. coli to estimate how many more or less markets Chipotle has sales in, where $Markets_\text{total}$ is a count of markets with sales (one-parameter model) $$Markets_i = Markets_\text{total} + \varepsilon_i$$
 
--   **Null hypothesis:** $H_0: Markets_i = 200$ (equivalently, the sales after E. Coli will equal 200). The null hypothesis can be rejected if there are way more or less markets with sales than 200. 
+-   **Null hypothesis:** $H_0: Markets_i = 200$ (equivalently, the sales after E. Coli will equal 200). The null hypothesis can be rejected if there are way more or less markets with sales than 200.
 
 2.  Model C has 0 parameters, model A has 1 parameter.
 
@@ -257,8 +256,8 @@ Write both a verbal description and a mathematical statement (use $\varepsilon_i
 
 1.  **MODEL C (compact):** takes the median value of government involvement in wealth inequality as the predicted value\
     $$Equal_i = 4 + \varepsilon_i$$
--   **MODEL A (augmented):** uses the average (as opposed to median) value of the answer to the extent to which governments should be involved in reducing inequality as a one parameter predictive value (one-parameter model)
-    $$Equal_i = Equal_\mu + \varepsilon_i$$
+
+-   **MODEL A (augmented):** uses the average (as opposed to median) value of the answer to the extent to which governments should be involved in reducing inequality as a one parameter predictive value (one-parameter model) $$Equal_i = Equal_\mu + \varepsilon_i$$
 -   **Null hypothesis:** $H_0: Equal_i = 4$ (equivalently, average individual will indicate a 4 on the survey as to their opinion about government involvement in reducing income inequality). The null hypothesis can be rejected if the predictive power of using the mean instead of the median is significant.
 
 ### (d) Estimate both models with `lm()`
