@@ -182,5 +182,3 @@ df |>
   group_by(y, z) |>
   mutate(mean_x = mean(x)) #this is different because it keeps all rows and columns, and instead just creates a new column that is "based on the grouping that this row would be apart of, here is the value that this row should have in the new column", so with summarize, rows 3 and 4 or 2 and 5 are the same and would be combined, here each row is kept distinct with an added value
 ```
-
-
